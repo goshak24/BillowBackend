@@ -1,6 +1,9 @@
 const { auth } = require("../config/firebase_config")
 const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require("firebase/auth");
 
+// Use authenticate token for protected auth routes by passing it in as an async prop (authenticateToken, req, res). 
+const { authenticateToken } = require("../middlewares/authMiddleware")
+
 exports.createUser = async (req, res) => {
     try {
         const { email, password } = req.body;
