@@ -1,4 +1,4 @@
-const admin = require("../config/firebaseAdmin");
+const admin = require("../fb-admin/firebase-admin");
 
 // Makes sure that only authenticated users can access certain "protected" APIs. 
 
