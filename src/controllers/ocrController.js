@@ -24,6 +24,7 @@ exports.processMultipleOCR = async (req, res) => {
         }
 
         const billPromises = files.map(async (file) => {
+            // Upload physical documents to cloud
             const storage = getStorage();
             const storageRef = ref(storage, `bills/${userId}/${Date.now()}-${file.originalname}`);
             await uploadBytes(storageRef, file.buffer);
