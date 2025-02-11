@@ -1,6 +1,5 @@
 const Tesseract = require("tesseract.js");
-const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage");
-const { addBill } = require("./billsController"); 
+const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage"); 
 
 const scheduler = Tesseract.createScheduler();
 
@@ -39,7 +38,7 @@ exports.processMultipleOCR = async (req, res) => {
 
             console.log(billData)
 
-            // Save bill to Firestore using billsController.js
+            
             return 0
         });
 
