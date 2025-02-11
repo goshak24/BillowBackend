@@ -3,28 +3,43 @@ const { collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, query, w
 const billsCollection = collection(db, "bills");
 
 // Upload single bill to firestore
-exports.uploadBill = async (req, res) => { 
+exports.uploadBill = async (req, res) => {
     try {
-        const { fileUrl, category, payDate, amount, vendor } = req.body;
-        const userId = req.user.uid; 
+        const userId = req.user?.uid; 
 
-        const docRef = await addDoc(billsCollection, {
-            userId: userId, 
-            category: category,
-            payDate: payDate, 
-            amount: amount, 
-            vendor: vendor, 
-            fileUrl: fileUrl || null, // Physical bill cloud URL 
-            paid: false, 
-            saved: false, 
-            createdAt: new Date() 
-        })
+        if (!userId) {
+            return res.status(403).json({ error: "Unauthorized: Missing user ID" });
+        }
 
+        const { category, payDate, amount, vendor, fileUrl } = req.body;
+
+        // Validate required fields
+        if (!category || !payDate || !amount || !vendor) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+    
+        let billData = {
+            userId,
+            category,
+            payDate: new Date(payDate),
+            amount: parseFloat(amount),
+            vendor,
+            fileUrl: fileUrl || null,
+            paid: false,
+            saved: false,
+            createdAt: new Date(),
+        };
+
+        // Add a new document to the "bills" collection
+        const docRef = await addDoc(billsCollection, billData);
+    
+        // Return the document ID and data
         res.status(201).json({ id: docRef.id, ...billData });
     } catch (error) {
+        console.error("Upload Bill Error:", error.message);
         res.status(500).json({ error: "Failed to upload bill: " + error.message });
-    } 
-} 
+    }
+};
 
 // Fetch a user's bill by its ID 
 exports.getBillById = async (req, res) => {
@@ -38,15 +53,20 @@ exports.getBillById = async (req, res) => {
 
         res.status(200).json({ id: billDoc.id, ...billDoc.data() });
     } catch (error) {
-        res.status(500).json({ error: "Failed to upload bill: " + error.message });
+        res.status(500).json({ error: "Failed to retrieve bill: " + error.message });
     }
 }
 
 // Fetch a user's bills by field 
+// Need DEBUGGING 
 exports.getBillsByField = async (req, res) => {
     try {
         const userId = req.user.uid; 
         const { category, vendor, payDate, createdAt, amount, paid } = req.query; 
+
+        // Debugging Required 
+        console.log("📥 Incoming query:", { category, vendor, payDate, createdAt, amount, paid });
+        console.log("🔍 User ID:", userId);
 
         let q = query(billsCollection, where("userId", "==", userId)); 
 
@@ -62,7 +82,7 @@ exports.getBillsByField = async (req, res) => {
 
         res.status(200).json(bills); 
     } catch (error) {
-        res.status(500).json({ error: "Failed to upload bill: " + error.message });
+        res.status(500).json({ error: error.message });
     } 
 } 
 
@@ -89,15 +109,17 @@ exports.markBillAsPaid = async (req, res) => {
         const { billId } = req.params; 
         const { paid } = req.body; 
 
-        await updateDoc(doc(billsCollection, billId), { paid }); 
+        await updateDoc(doc(billsCollection, billId), { paid: true }); 
 
-        res.status(200).json({ message: `Bill marked as ${paid ? 'paid' : 'unpaid'}` }); 
+        res.status(200).json({ message: 'Bill marked as paid' }); 
     } catch (error) {
         res.status(500).json({ error: error.message }); 
     } 
 }
 
 // Highlight a bill by billId (e.g., if its an important bill) 
+
+// Need Testing
 exports.highlightBill = async (req, res) => {
     try {
         const { billId } = req.params; 

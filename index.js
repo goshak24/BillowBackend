@@ -8,8 +8,10 @@ app.use(cors());
 
 // Importing routes
 const authRoutes = require('./src/routes/authRoutes');
+const billRoutes = require('./src/routes/billRoutes'); 
 
 // Using routes
 app.use('/api/auth', authRoutes);
+app.use('/api/bill', billRoutes); 
 
 module.exports = app; 
