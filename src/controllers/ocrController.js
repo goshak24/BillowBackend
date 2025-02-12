@@ -1,5 +1,9 @@
 const Tesseract = require("tesseract.js");
+const axios = require('axios'); 
 const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage"); 
+
+// Heuristic approach cloud data 
+const heuristicRef = doc(db, "heuristic_data", "vendors_categories"); 
 
 const chrono = require('chrono-node'); 
 
@@ -34,15 +38,27 @@ exports.processMultipleOCR = async (req, res) => {
             // Run OCR using the scheduler, to extract the text. 
             const { data: { text } } = await scheduler.addJob("recognize", file.buffer);
 
-            // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore   
-            const billData = extractBillDetails(text);
-            billData.userId = userId;
-            billData.fileUrl = fileUrl;
+            // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore  
 
-            console.log(billData)
+            let billData = extractBillDetails(text); // add generated fileUrl into this JSON
+            billData = { fileUrl: fileUrl, ...billData }
 
-            
-            return 0
+            console.log(billData) // check format is good 
+
+            // Send data to uploadBill API using Axios
+            const { data: responseData } = await axios.post(
+                `${req.protocol}://${req.get("host")}/api/bill/uploadBill`,
+                billData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": req.headers("Authorization"), // Forward auth header (return VALID required since the route is protected) 
+                    },
+                    timeout: 5000, // 5s timeout
+                }
+            );
+
+            return responseData;
         });
 
         const savedBills = await Promise.all(billPromises);
@@ -55,10 +71,9 @@ exports.processMultipleOCR = async (req, res) => {
 exports.extractBillDetails = (input) => {
     try {
         const preprocessed = preprocessText(input); 
-        console.log(preprocessed)
         const keyInfo = detectKeyInformation(preprocessed); 
-        console.log(keyInfo) 
-        return 0; 
+
+        return keyInfo; 
     } catch (error) {
         console.error('Failed at extracting bill details')
     } 
