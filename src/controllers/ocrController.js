@@ -1,6 +1,8 @@
 const Tesseract = require("tesseract.js");
 const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage"); 
 
+const chrono = require('chrono-node'); 
+
 const scheduler = Tesseract.createScheduler();
 
 const workerGen = async () => {
@@ -29,9 +31,10 @@ exports.processMultipleOCR = async (req, res) => {
             await uploadBytes(storageRef, file.buffer);
             const fileUrl = await getDownloadURL(storageRef);
 
-            // Run OCR using the scheduler
+            // Run OCR using the scheduler, to extract the text. 
             const { data: { text } } = await scheduler.addJob("recognize", file.buffer);
 
+            // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore   
             const billData = extractBillDetails(text);
             billData.userId = userId;
             billData.fileUrl = fileUrl;
@@ -48,3 +51,93 @@ exports.processMultipleOCR = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 }; 
+
+exports.extractBillDetails = (input) => {
+    try {
+        const preprocessed = preprocessText(input); 
+        console.log(preprocessed)
+        const keyInfo = detectKeyInformation(preprocessed); 
+        console.log(keyInfo) 
+        return 0; 
+    } catch (error) {
+        console.error('Failed at extracting bill details')
+    } 
+} 
+
+// Helper functions for 'extractBillDetails' 
+
+const preprocessText = (text) => {
+    try {
+        return text
+            .replace('/\r\n\g', ' ')
+            .replace('/[^a-zA-Z0-9@.:$\/-]/g', ' ')
+            .replace('/\s+/g', ' ')
+            .toLowerCase(); 
+    } catch (error) {
+        console.error('Failed preprocessing input text'); 
+    } 
+} 
+
+const detectKeyInformation = (text) => {
+    let amount, category, payDate, vendor; 
+    try {
+        amount = extractAmount(text); 
+        vendor = extractVendor(text); 
+        category = categoriseBill(vendor); 
+        payDate = extractPayDate(text);
+
+        return { amount, vendor, category, payDate}; 
+    } catch (error) {
+        console.error('Failed to detect key information')
+    }
+}
+
+const extractAmount = (text) => {
+    const words = text.split(" "); 
+    for (const word in words) {
+        if (/^\£?\d{1,5}(\.\d{2})?£/.test(word)) {
+            return parseFloat(word.replace("£", "")) // can add or change the dollar sign to support more currencies 
+        } 
+    } 
+} 
+
+const extractVendor = (text) => {
+    // Link to dynamically changing vendors list for optimum solution 
+    const vendors = ["Netflix", "Amazon", "British Gas", "Virgin Media", "Spotify", "Apple", "Verizon", "AT&T"]; 
+
+    for (const vendor of vendors) {
+        if (text.includes(vendor.toLowerCase())) {
+            return vendor;
+        }
+    }
+    return "Unknown Vendor";
+} 
+
+const categoriseBill = (vendor) => {
+    try {
+        // update to dynamically changing categories list for optimum solution 
+        const categories = { 
+            "utilities": ["British Gas", "Verizon", "AT&T"],
+            "subscriptions": ["Netflix", "Spotify", "Amazon"],
+            "insurance": ["Axa", "Geico", "Allstate"],
+        };
+
+        for (let key in categories) {
+            if (categories[key].includes(vendor)) {
+                return key; 
+            } 
+            return "Unknown Category"
+        } 
+    } catch (error) {
+        console.error('Unable to categorise bill'); 
+    } 
+} 
+
+const extractPayDate = (text) => {
+    const parsedDate = chrono.parse(text); 
+    if (parsedDate) {
+        return parsedDate
+    } else {
+        return "No Date" // need to figure out optimum handling of this 
+    } 
+} 
