@@ -45,10 +45,8 @@ exports.processMultipleOCR = async (req, res) => {
 
             // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore  
 
-            let billData = this.extractBillDetails(text); // add generated fileUrl into this JSON
+            let billData = await this.extractBillDetails(text); // add generated fileUrl into this JSON
             billData = { fileUrl: fileUrl, ...billData }
-
-            console.log("Sending billData:", JSON.stringify(billData, null, 2));
 
             // Send data to uploadBill API using Axios
             const { data: responseData } = await axios.post(
@@ -101,12 +99,12 @@ const preprocessText = (text) => {
     } 
 } 
 
-const detectKeyInformation = (text) => {
+const detectKeyInformation = async (text) => {
     let amount, category, payDate, vendor; 
     try {
         amount = extractAmount(text); 
         vendor = extractVendor(text); 
-        category = categoriseBill(vendor); 
+        category = categoriseBill(vendor.value); 
         payDate = extractPayDate(text);
 
         let confidenceScores = [
@@ -117,12 +115,19 @@ const detectKeyInformation = (text) => {
 
         const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3); 
 
-        if (overallConfidence >= 80) {
-            return { amount, vendor, category, payDate}; 
-        } else {
-            // Call AI API Handling + Update Heuristic Approach 
-            return 0; 
+        if (overallConfidence < 80) {
+            console.log("Confidence too low, using AI fallback...");
+            // const aiExtractedData = await parseBillWithAI(text);
+            // updateHeuristicRules(amount.value, vendor.value, category, payDate.value, aiExtractedData);
+            // return aiExtractedData;
         }
+    
+        return { 
+            amount: amount.value, 
+            vendor: vendor.value, 
+            category, 
+            payDate: payDate.value 
+        };
     } catch (error) {
         console.error('Failed to detect key information')
     }
