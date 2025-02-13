@@ -1,6 +1,8 @@
 const Tesseract = require("tesseract.js");
 const axios = require('axios'); 
 const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage"); 
+const { doc } = require('firebase/firestore'); 
+const { db } = require('../config/firebase_config'); 
 
 // Heuristic approach cloud data 
 const heuristicRef = doc(db, "heuristic_data", "vendors_categories"); 
@@ -30,29 +32,35 @@ exports.processMultipleOCR = async (req, res) => {
 
         const billPromises = files.map(async (file) => {
             // Upload physical documents to cloud
-            const storage = getStorage();
+            
+            /* const storage = getStorage();
             const storageRef = ref(storage, `bills/${userId}/${Date.now()}-${file.originalname}`);
-            await uploadBytes(storageRef, file.buffer);
-            const fileUrl = await getDownloadURL(storageRef);
+            await uploadBytes(storageRef, file.buffer);  
+            const fileUrl = await getDownloadURL(storageRef); */
+
+            const fileUrl = "test for now"
 
             // Run OCR using the scheduler, to extract the text. 
             const { data: { text } } = await scheduler.addJob("recognize", file.buffer);
 
             // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore  
 
-            let billData = extractBillDetails(text); // add generated fileUrl into this JSON
+            let billData = this.extractBillDetails(text); // add generated fileUrl into this JSON
             billData = { fileUrl: fileUrl, ...billData }
 
-            console.log(billData) // check format is good 
+            console.log("Sending billData:", JSON.stringify(billData, null, 2));
 
             // Send data to uploadBill API using Axios
             const { data: responseData } = await axios.post(
-                `${req.protocol}://${req.get("host")}/api/bill/uploadBill`,
+                `${req.protocol}://${req.get("host")}/api/bill/upload`,
                 billData,
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": req.headers("Authorization"), // Forward auth header (return VALID required since the route is protected) 
+                        "Authorization": req.headers.authorization, 
+                        "Content-Length": JSON.stringify(billData).length, 
+                        "Host": req.get("host"), 
+                        "Connection": "keep-alive", 
                     },
                     timeout: 5000, // 5s timeout
                 }
@@ -109,8 +117,8 @@ const detectKeyInformation = (text) => {
 
 const extractAmount = (text) => {
     const words = text.split(" "); 
-    for (const word in words) {
-        if (/^\£?\d{1,5}(\.\d{2})?£/.test(word)) {
+    for (const word of words) {
+        if (/^[£$€]?\d{1,5}(\.\d{2})?$/.test(word)) {
             return parseFloat(word.replace("£", "")) // can add or change the dollar sign to support more currencies 
         } 
     } 
@@ -151,7 +159,7 @@ const categoriseBill = (vendor) => {
 const extractPayDate = (text) => {
     const parsedDate = chrono.parse(text); 
     if (parsedDate) {
-        return parsedDate
+        return parsedDate[0].refDate.toISOString().split("T")[0];
     } else {
         return "No Date" // need to figure out optimum handling of this 
     } 
