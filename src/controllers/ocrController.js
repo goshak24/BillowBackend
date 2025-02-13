@@ -109,31 +109,61 @@ const detectKeyInformation = (text) => {
         category = categoriseBill(vendor); 
         payDate = extractPayDate(text);
 
-        return { amount, vendor, category, payDate}; 
+        let confidenceScores = [
+            amount.confidence,
+            vendor.confidence,
+            payDate.confidence
+        ]
+
+        const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3); 
+
+        if (overallConfidence >= 80) {
+            return { amount, vendor, category, payDate}; 
+        } else {
+            // Call AI API Handling + Update Heuristic Approach 
+            return 0; 
+        }
     } catch (error) {
         console.error('Failed to detect key information')
     }
 }
 
 const extractAmount = (text) => {
-    const words = text.split(" "); 
+    let amountConfidence = 100;
+    let amountCount = 0;
+    let lastAmount = null;
+
+    const words = text.split(" ");
     for (const word of words) {
         if (/^[£$€]?\d{1,5}(\.\d{2})?$/.test(word)) {
-            return parseFloat(word.replace("£", "")) // can add or change the dollar sign to support more currencies 
-        } 
-    } 
-} 
+            amountCount += 1;
+            lastAmount = parseFloat(word.replace(/[^0-9.]/g, "")); 
+        }
+    }
+
+    amountConfidence = Math.max(100 - (amountCount - 1) * 20, 0);
+
+    return { confidence: amountConfidence, value: lastAmount };
+};
+
 
 const extractVendor = (text) => {
     // Link to dynamically changing vendors list for optimum solution 
     const vendors = ["Netflix", "Amazon", "British Gas", "Virgin Media", "Spotify", "Apple", "Verizon", "AT&T"]; 
+    let vendorMatches = [];  
 
     for (const vendor of vendors) {
         if (text.includes(vendor.toLowerCase())) {
-            return vendor;
+            vendorMatches.push(vendor);
         }
     }
-    return "Unknown Vendor";
+
+    let vendorConfidence = 100; 
+    if (vendorMatches.length > 1) {
+        vendorConfidence = Math.max(100 - (vendorMatches.length-1) * 30, 0);
+    } 
+
+    return { confidence: vendorConfidence, value: vendorMatches.length>0 ? vendorMatches[0] : "Unknown Vendor"}; 
 } 
 
 const categoriseBill = (vendor) => {
@@ -158,9 +188,16 @@ const categoriseBill = (vendor) => {
 
 const extractPayDate = (text) => {
     const parsedDate = chrono.parse(text); 
-    if (parsedDate) {
-        return parsedDate[0].refDate.toISOString().split("T")[0];
-    } else {
-        return "No Date" // need to figure out optimum handling of this 
+    if (parsedDate.length === 0) { 
+        return { confidence: 0, value: 'No Date' };
     } 
+
+    let dateConfidence = 100; 
+    if (parsedDate.length > 1) {
+        dateConfidence = Math.max(dateConfidence - (parsedDate.length-1)*30, 0);  
+    } 
+    
+    return {
+        confidence: dateConfidence, value: parsedDate[0].refDate.toISOString().split("T")[0]
+    }
 } 
