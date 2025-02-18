@@ -10,10 +10,12 @@ app.use(cors());
 const authRoutes = require('./src/routes/authRoutes');
 const billRoutes = require('./src/routes/billRoutes'); 
 const ocrRoutes = require('./src/routes/ocrRoutes'); 
+const emailRoutes = require('./src/routes/emailRoutes'); 
 
 // Using routes
 app.use('/api/auth', authRoutes);
 app.use('/api/bill', billRoutes); 
-app.use('/api/ocr', ocrRoutes)
+app.use('/api/ocr', ocrRoutes); 
+app.use('/api/email', emailRoutes);  
 
 module.exports = app; 

@@ -3,13 +3,12 @@ const { getFirestore } = require("firebase/firestore");
 const { getAuth } = require("firebase/auth");
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD8UuZ8gdFpyBB3NozAJa-G26CiYZ8QziE",
-  authDomain: "billowbackend.firebaseapp.com",
-  projectId: "billowbackend",
-  storageBucket: "billowbackend.firebasestorage.app",
-  messagingSenderId: "632447774254",
-  appId: "1:632447774254:web:92e23bc0ea2ef9d91139bf",
-  measurementId: "G-C2T4N55DEW"
+  apiKey: "AIzaSyB_vy0NkESCmMFIxTj9_aYpOFcZ6AiQp2o",
+  authDomain: "billowback.firebaseapp.com",
+  projectId: "billowback",
+  storageBucket: "billowback.firebasestorage.app",
+  messagingSenderId: "154617010209",
+  appId: "1:154617010209:web:b5d98538ece9b2e3922b60"
 };
 
 const app = initializeApp(firebaseConfig);
