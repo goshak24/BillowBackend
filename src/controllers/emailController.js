@@ -118,4 +118,13 @@ async function deleteLabel(req, res) {
   }
 };
 
-module.exports = { listLabels, getLabelledEmails, createLabel, deleteLabel }; 
+async function disconnectGmail(req, res) {
+  try {
+    await fs.unlink(TOKEN_PATH); // Remove stored OAuth token
+    res.status(200).json({ message: "Gmail account disconnected." });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+} 
+
+module.exports = { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail }; 
