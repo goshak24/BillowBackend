@@ -14,12 +14,13 @@ exports.uploadBill = async (req, res) => {
         const { category, payDate, amount, vendor, fileUrl } = req.body;
 
         // Validate required fields
-        if (!category || !payDate || !amount || !vendor) {
+        if (!billName || !category || !payDate || !amount || !vendor) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
         let billData = {
             userId,
+            billName,
             category,
             payDate: new Date(payDate),
             amount: parseFloat(amount),
@@ -89,9 +90,22 @@ exports.getBillsByField = async (req, res) => {
     }
 }
 
-// Retrieve bills using a search term (e.g., vendor, amount or category)
+// TEST: Retrieve bills using a search term (e.g., name) 
 exports.getBillsBySearch = async (req, res) => {
-    try {  } catch (error) { }
+    try { 
+        const { userId } = req.user.uid; 
+        const { billName } = req.query; 
+
+        const billDoc = await getDoc(doc(billsCollection, billName));
+
+        if (!billDoc.exists()) {
+            return res.status(404).json({ error: "Bill not found" });
+        }
+
+        res.status(200).json({ id: billDoc.id, ...billDoc.data() });
+     } catch (error) {
+
+    }
 }
 
 // Update a bill's details in firestore via its billId 
