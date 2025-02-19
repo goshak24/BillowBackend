@@ -6,7 +6,6 @@ const { axios } = require('axios')
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.labels', // Manage labels
-  'https://www.googleapis.com/auth/gmail.modify', // Read and modify emails
   'https://www.googleapis.com/auth/gmail.readonly' // Read-only access (already included)
 ];
 
