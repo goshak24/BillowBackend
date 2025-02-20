@@ -1,7 +1,7 @@
 const { initializeApp } = require("firebase/app"); 
 const { getFirestore } = require("firebase/firestore");
 const { getAuth } = require("firebase/auth");
-const { getMessaging } = require('firebase/messaging'); 
+// const { getMessaging } = require('firebase/messaging'); 
 
 const firebaseConfig = {
   apiKey: "AIzaSyB_vy0NkESCmMFIxTj9_aYpOFcZ6AiQp2o",
@@ -16,6 +16,6 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app); 
 const auth = getAuth(app); 
-const messaging = getMessaging(app); 
+// const messaging = getMessaging(app); 
 
-module.exports = { db, auth, messaging } 
+module.exports = { db, auth } 

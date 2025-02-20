@@ -2,7 +2,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { authenticate } = require('@google-cloud/local-auth');
 const { google } = require('googleapis');
-const { axios } = require('axios')
+require("dotenv").config();
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.labels', // Manage labels
@@ -11,6 +11,37 @@ const SCOPES = [
 
 const TOKEN_PATH = path.join(process.cwd(), 'token.json');
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
+
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI; // Change for production
+
+const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+
+async function getAuthUrl(req, res) {
+    const authUrl = oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        prompt: "consent",
+        scope: [
+            "https://www.googleapis.com/auth/gmail.labels",
+            "https://www.googleapis.com/auth/gmail.readonly",
+        ],
+    });
+
+    res.json({ authUrl });
+}
+
+async function handleOAuthCallback(req, res) {
+    try {
+        const { code } = req.query;
+        const { tokens } = await oauth2Client.getToken(code);
+
+        // Send tokens to the frontend to store in AsyncStorage
+        res.json({ tokens });
+    } catch (error) {
+        res.status(500).json({ error: "OAuth callback failed" });
+    }
+}
 
 async function loadSavedCredentialsIfExist() {
   try {
@@ -46,7 +77,7 @@ async function authorize() {
 
 async function listLabels(req, res) {
   try {
-    const auth = await authorize();
+    const auth = new google.auth.OAuth2();
     const gmail = google.gmail({ version: 'v1', auth });
 
     const response = await gmail.users.labels.list({ userId: 'me' });
@@ -63,7 +94,7 @@ async function listLabels(req, res) {
 
 async function getLabelledEmails(req, res) {
   try {
-    const auth = await authorize();
+    const auth = new google.auth.OAuth2();
     const gmail = google.gmail({ version: 'v1', auth });
 
     const labelId = req.params.id; // Get label ID from request
@@ -80,7 +111,7 @@ async function getLabelledEmails(req, res) {
 
 async function createLabel(req, res) {
   try {
-    const auth = await authorize();
+    const auth = new google.auth.OAuth2();
     const gmail = google.gmail({ version: 'v1', auth });
 
     const label = {
@@ -102,7 +133,7 @@ async function createLabel(req, res) {
 
 async function deleteLabel(req, res) {
   try {
-    const auth = await authorize();
+    const auth = new google.auth.OAuth2();
     const gmail = google.gmail({ version: 'v1', auth });
 
     const labelId = req.params.id; 
@@ -126,4 +157,4 @@ async function disconnectGmail(req, res) {
   }
 } 
 
-module.exports = { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail }; 
+module.exports = { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail, getAuthUrl, handleOAuthCallback }; 

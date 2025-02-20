@@ -1,5 +1,5 @@
 const express = require('express');
-const { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail } = require('../controllers/emailController');
+const { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail, getAuthUrl, handleOAuthCallback } = require('../controllers/emailController');
 
 const router = express.Router();
 
@@ -9,5 +9,7 @@ router.get("/labels/:id", getLabelledEmails);
 router.post("/labels", createLabel);
 router.delete("/labels/:id", deleteLabel);
 router.delete("/disconnect", disconnectGmail); 
+router.get("/url", getAuthUrl);
+router.get("/url/callback", handleOAuthCallback);
 
 module.exports = router; 
