@@ -1,5 +1,5 @@
 const express = require('express');
-const { createUser, signUserIn, verifyToken, refreshToken } = require('../controllers/authController');
+const { createUser, signUserIn, verifyToken, refreshToken, saveUserInformation } = require('../controllers/authController');
 const router = express.Router();
 
 router.post('/signup', createUser); 

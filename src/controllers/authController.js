@@ -3,21 +3,36 @@ const { axios } = require('axios')
 const admin = require("../fb-admin/firebase-admin");
 const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require("firebase/auth");
 
+const { db } = require("../config/firebase_config");
+const { collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, query, where } = require("firebase/firestore"); 
+const usersCollection = collection(db, "users"); 
+
 exports.createUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, name, phone } = req.body;
 
-        // Password Validation 
         if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
             return res.status(400).json({ error: "Password must be at least 8 characters long, contain a number, and an uppercase letter." });
         }
         
-        const user = await createUserWithEmailAndPassword(auth, email, password);
-        res.status(201).json(user);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user; 
+
+        // Save user info to Firestore
+        const userData = {
+            userId: user.uid,
+            name,
+            phone,
+            email
+        };
+
+        await addDoc(usersCollection, userData);
+
+        res.status(201).json({ userId: user.uid, email, name, phone });
     } catch (error) {
-        res.status(400).json({ error: error.message }); 
+        res.status(400).json({ error: error.message });
     }
-}; 
+};
 
 exports.signUserIn = async (req, res) => {
     try {
