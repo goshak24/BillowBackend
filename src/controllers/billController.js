@@ -14,14 +14,13 @@ exports.uploadBill = async (req, res) => {
         const { category, payDate, amount, vendor, fileUrl } = req.body;
 
         // Validate required fields
-        if (!billName || !category || !payDate || !amount || !vendor) {
+        if (!category || !payDate || !amount || !vendor) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
         let billData = {
             userId,
-            billName,
-            category,
+            category, 
             payDate: new Date(payDate),
             amount: parseFloat(amount),
             vendor,

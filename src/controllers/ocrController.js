@@ -115,7 +115,7 @@ const detectKeyInformation = async (text) => {
 
         const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3); 
 
-        if (overallConfidence < 80) {
+        if (overallConfidence < 70) {
             console.log("Confidence too low, using AI fallback...");
             // const aiExtractedData = await parseBillWithAI(text);
             // updateHeuristicRules(amount.value, vendor.value, category, payDate.value, aiExtractedData);
@@ -173,23 +173,24 @@ const extractVendor = (text) => {
 
 const categoriseBill = (vendor) => {
     try {
-        // update to dynamically changing categories list for optimum solution 
         const categories = { 
-            "utilities": ["British Gas", "Verizon", "AT&T"],
-            "subscriptions": ["Netflix", "Spotify", "Amazon"],
-            "insurance": ["Axa", "Geico", "Allstate"],
+            "Utilities": ["British Gas", "Verizon", "AT&T"],
+            "Subscriptions": ["Netflix", "Spotify", "Amazon"],
+            "Insurance": ["Axa", "Geico", "Allstate"],
         };
 
         for (let key in categories) {
-            if (categories[key].includes(vendor)) {
+            if (categories[key].map(v => v.toLowerCase()).includes(vendor.toLowerCase())) {
                 return key; 
             } 
-            return "Unknown Category"
         } 
+
+        return "Unknown Category";  // ✅ Correct placement
     } catch (error) {
-        console.error('Unable to categorise bill'); 
+        console.error('Unable to categorise bill', error); 
+        return "Unknown Category"; 
     } 
-} 
+}
 
 const extractPayDate = (text) => {
     const parsedDate = chrono.parse(text); 

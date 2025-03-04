@@ -2,14 +2,15 @@ const { initializeApp } = require("firebase/app");
 const { getFirestore } = require("firebase/firestore");
 const { getAuth } = require("firebase/auth");
 // const { getMessaging } = require('firebase/messaging'); 
+require('dotenv').config();
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB_vy0NkESCmMFIxTj9_aYpOFcZ6AiQp2o",
-  authDomain: "billowback.firebaseapp.com",
-  projectId: "billowback",
-  storageBucket: "billowback.firebasestorage.app",
-  messagingSenderId: "154617010209",
-  appId: "1:154617010209:web:b5d98538ece9b2e3922b60"
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID 
 };
 
 const app = initializeApp(firebaseConfig);
