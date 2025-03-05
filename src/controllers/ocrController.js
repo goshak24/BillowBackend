@@ -24,51 +24,27 @@ const workerCount = 3;
 exports.processMultipleOCR = async (req, res) => {
     try {
         const userId = req.user.uid;
-        const files = req.files; // Array of uploaded images/PDFs
+        const files = req.files; 
 
         if (!files || files.length === 0) {
             return res.status(400).json({ error: "No files uploaded" });
         }
 
-        const billPromises = files.map(async (file) => {
-            // Upload physical documents to cloud
-            
-            /* const storage = getStorage();
-            const storageRef = ref(storage, `bills/${userId}/${Date.now()}-${file.originalname}`);
-            await uploadBytes(storageRef, file.buffer);  
-            const fileUrl = await getDownloadURL(storageRef); */
+        const savedBills = [];
 
-            const fileUrl = "test for now"
-
-            // Run OCR using the scheduler, to extract the text. 
+        for (const file of files) {
+            // Run OCR to extract text
             const { data: { text } } = await scheduler.addJob("recognize", file.buffer);
 
-            // Call extractBillDetails to format the OCR'd text into JSON format compatible with firestore  
+            // Extract details from text
+            let billData = await this.extractBillDetails(text);
 
-            let billData = await this.extractBillDetails(text); // add generated fileUrl into this JSON
-            billData = { fileUrl: fileUrl, ...billData }
+            // Store extracted details 
+            billData = { fileUrl: "temp_url", ...billData };
+            savedBills.push(billData);
+        }
 
-            // Send data to uploadBill API using Axios
-            const { data: responseData } = await axios.post(
-                `${req.protocol}://${req.get("host")}/api/bill/upload`,
-                billData,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": req.headers.authorization, 
-                        "Content-Length": JSON.stringify(billData).length, 
-                        "Host": req.get("host"), 
-                        "Connection": "keep-alive", 
-                    },
-                    timeout: 5000, // 5s timeout
-                }
-            );
-
-            return responseData;
-        });
-
-        const savedBills = await Promise.all(billPromises);
-        res.status(201).json({ message: "Bills processed successfully", savedBills });
+        res.status(200).json({ message: "OCR processed", savedBills });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
