@@ -21,7 +21,7 @@ exports.uploadBill = async (req, res) => {
         let billData = {
             userId,
             category, 
-            payDate: new Date(payDate),
+            payDate: new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' }), 
             amount: parseFloat(amount),
             vendor,
             fileUrl: fileUrl || null,
