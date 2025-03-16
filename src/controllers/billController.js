@@ -20,7 +20,7 @@ exports.uploadBill = async (req, res) => {
 
         // Validate type (must be either 'bill' or 'expense')
         if (!["bill", "expense"].includes(type)) {
-            return res.status(400).json({ error: "Invalid type. Must be 'bill' or 'expense'." });
+            return res.status(400).json({ error: "Invalid type. Must be 'bill' or 'expense'." }); 
         }
 
         // Create the bill/expense data object
@@ -42,6 +42,9 @@ exports.uploadBill = async (req, res) => {
         if (type === "bill" && payDate) {
             billOrExpenseData.payDate = new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' });
         }
+
+        // Log the final data being saved
+        console.log("Data being saved:", billOrExpenseData);
 
         // Add a new document to the "bills" collection
         const docRef = await addDoc(billsCollection, billOrExpenseData);
