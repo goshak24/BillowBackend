@@ -103,7 +103,7 @@ const handleOAuthCallback = async (req, res) => {
 
     return res.json({ message: "Authentication successful!", tokens });
   } catch (error) {
-    console.error("❌ OAuth Callback Error:", error);
+    console.error("OAuth Callback Error:", error);
     return res.status(500).json({ error: "OAuth callback failed", details: error.message });
   }
 };

@@ -15,7 +15,7 @@ exports.uploadBill = async (req, res) => {
 
         // Validate required fields
         if (!category || !amount || !vendor || !type) {
-            return res.status(400).json({ error: "Missing required fields" });
+            return res.status(400).json({ error: "Missing required fields" }); 
         }
 
         // Validate type (must be either 'bill' or 'expense')
@@ -33,18 +33,10 @@ exports.uploadBill = async (req, res) => {
             paid: false,
             saved: false,
             createdAt: new Date(),
-            fileUrl: fileUrl || null, // Optional file URL
+            fileUrl: fileUrl || null, // Optional file URL 
             reoccuring: reoccuring || false, // Default to false if not provided
-            payDate: null, // Default to null for expenses
-        };
-
-        // Only add payDate for bills
-        if (type === "bill" && payDate) {
-            billOrExpenseData.payDate = new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' });
-        }
-
-        // Log the final data being saved
-        console.log("Data being saved:", billOrExpenseData);
+            payDate: new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' }) || null, // Default to null for expenses
+        }; 
 
         // Add a new document to the "bills" collection
         const docRef = await addDoc(billsCollection, billOrExpenseData);
