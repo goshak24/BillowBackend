@@ -1,13 +1,13 @@
 const Tesseract = require("tesseract.js");
-const axios = require('axios'); 
-const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage"); 
-const { doc } = require('firebase/firestore'); 
-const { db } = require('../config/firebase_config'); 
+const axios = require('axios');
+const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage");
+const { doc } = require('firebase/firestore');
+const { db } = require('../config/firebase_config');
 
 // Heuristic approach cloud data 
-const heuristicRef = doc(db, "heuristic_data", "vendors_categories"); 
+const heuristicRef = doc(db, "heuristic_data", "vendors_categories");
 
-const chrono = require('chrono-node'); 
+const chrono = require('chrono-node');
 
 const scheduler = Tesseract.createScheduler();
 
@@ -19,12 +19,12 @@ const workerGen = async () => {
 const workerCount = 3;
 (async () => {
     await Promise.all(Array(workerCount).fill(0).map(() => workerGen()));
-})();
+})(); 
 
 exports.processMultipleOCR = async (req, res) => {
     try {
         const userId = req.user.uid;
-        const files = req.files; 
+        const files = req.files;
 
         if (!files || files.length === 0) {
             return res.status(400).json({ error: "No files uploaded" });
@@ -48,18 +48,18 @@ exports.processMultipleOCR = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-}; 
+};
 
 exports.extractBillDetails = (input) => {
     try {
-        const preprocessed = preprocessText(input); 
-        const keyInfo = detectKeyInformation(preprocessed); 
+        const preprocessed = preprocessText(input);
+        const keyInfo = detectKeyInformation(preprocessed);
 
-        return keyInfo; 
+        return keyInfo;
     } catch (error) {
         console.error('Failed at extracting bill details')
-    } 
-} 
+    }
+}
 
 // Helper functions for 'extractBillDetails' 
 
@@ -69,18 +69,18 @@ const preprocessText = (text) => {
             .replace('/\r\n\g', ' ')
             .replace('/[^a-zA-Z0-9@.:$\/-]/g', ' ')
             .replace('/\s+/g', ' ')
-            .toLowerCase(); 
+            .toLowerCase();
     } catch (error) {
-        console.error('Failed preprocessing input text'); 
-    } 
-} 
+        console.error('Failed preprocessing input text');
+    }
+}
 
 const detectKeyInformation = async (text) => {
-    let amount, category, payDate, vendor; 
+    let amount, category, payDate, vendor;
     try {
-        amount = extractAmount(text); 
-        vendor = extractVendor(text); 
-        category = categoriseBill(vendor.value); 
+        amount = extractAmount(text);
+        vendor = extractVendor(text);
+        category = categoriseBill(vendor.value);
         payDate = extractPayDate(text);
 
         let confidenceScores = [
@@ -89,7 +89,7 @@ const detectKeyInformation = async (text) => {
             payDate.confidence
         ]
 
-        const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3); 
+        const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3);
 
         if (overallConfidence < 70) {
             console.log("Confidence too low, using AI fallback...");
@@ -97,12 +97,12 @@ const detectKeyInformation = async (text) => {
             // updateHeuristicRules(amount.value, vendor.value, category, payDate.value, aiExtractedData);
             // return aiExtractedData;
         }
-    
-        return { 
-            amount: amount.value, 
-            vendor: vendor.value, 
-            category, 
-            payDate: payDate.value 
+
+        return {
+            amount: amount.value,
+            vendor: vendor.value,
+            category,
+            payDate: payDate.value
         };
     } catch (error) {
         console.error('Failed to detect key information')
@@ -118,7 +118,7 @@ const extractAmount = (text) => {
     for (const word of words) {
         if (/^[£$€]?\d{1,5}(\.\d{2})?$/.test(word)) {
             amountCount += 1;
-            lastAmount = parseFloat(word.replace(/[^0-9.]/g, "")); 
+            lastAmount = parseFloat(word.replace(/[^0-9.]/g, ""));
         }
     }
 
@@ -130,8 +130,8 @@ const extractAmount = (text) => {
 
 const extractVendor = (text) => {
     // Link to dynamically changing vendors list for optimum solution 
-    const vendors = ["Netflix", "Amazon", "British Gas", "Virgin Media", "Spotify", "Apple", "Verizon", "AT&T"]; 
-    let vendorMatches = [];  
+    const vendors = ["Netflix", "Amazon", "British Gas", "Virgin Media", "Spotify", "Apple", "Verizon", "AT&T"];
+    let vendorMatches = [];
 
     for (const vendor of vendors) {
         if (text.includes(vendor.toLowerCase())) {
@@ -139,17 +139,17 @@ const extractVendor = (text) => {
         }
     }
 
-    let vendorConfidence = 100; 
+    let vendorConfidence = 100;
     if (vendorMatches.length > 1) {
-        vendorConfidence = Math.max(100 - (vendorMatches.length-1) * 30, 0);
-    } 
+        vendorConfidence = Math.max(100 - (vendorMatches.length - 1) * 30, 0);
+    }
 
-    return { confidence: vendorConfidence, value: vendorMatches.length>0 ? vendorMatches[0] : "Unknown Vendor"}; 
-} 
+    return { confidence: vendorConfidence, value: vendorMatches.length > 0 ? vendorMatches[0] : "Unknown Vendor" };
+}
 
 const categoriseBill = (vendor) => {
     try {
-        const categories = { 
+        const categories = {
             "Utilities": ["British Gas", "Verizon", "AT&T"],
             "Subscriptions": ["Netflix", "Spotify", "Amazon"],
             "Insurance": ["Axa", "Geico", "Allstate"],
@@ -157,28 +157,28 @@ const categoriseBill = (vendor) => {
 
         for (let key in categories) {
             if (categories[key].map(v => v.toLowerCase()).includes(vendor.toLowerCase())) {
-                return key; 
-            } 
-        } 
+                return key;
+            }
+        }
 
-        return "Unknown Category";  // ✅ Correct placement
+        return "Unknown Category";
     } catch (error) {
-        console.error('Unable to categorise bill', error); 
-        return "Unknown Category"; 
-    } 
+        console.error('Unable to categorise bill', error);
+        return "Unknown Category";
+    }
 }
 
 const extractPayDate = (text) => {
-    const parsedDate = chrono.parse(text); 
-    if (parsedDate.length === 0) { 
+    const parsedDate = chrono.parse(text);
+    if (parsedDate.length === 0) {
         return { confidence: 0, value: 'No Date' };
-    } 
+    }
 
-    let dateConfidence = 100; 
+    let dateConfidence = 100;
     if (parsedDate.length > 1) {
-        dateConfidence = Math.max(dateConfidence - (parsedDate.length-1)*30, 0);  
-    } 
-    
+        dateConfidence = Math.max(dateConfidence - (parsedDate.length - 1) * 30, 0);
+    }
+
     return {
         confidence: dateConfidence, value: parsedDate[0].refDate.toISOString().split("T")[0]
     }

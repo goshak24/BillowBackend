@@ -11,33 +11,46 @@ exports.uploadBill = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized: Missing user ID" });
         }
 
-        const { category, payDate, amount, vendor, fileUrl } = req.body;
+        const { category, payDate, amount, vendor, fileUrl, reoccuring, type } = req.body;
 
         // Validate required fields
-        if (!category || !payDate || !amount || !vendor) {
+        if (!category || !amount || !vendor || !type) {
             return res.status(400).json({ error: "Missing required fields" });
         }
 
-        let billData = {
+        // Validate type (must be either 'bill' or 'expense')
+        if (!["bill", "expense"].includes(type)) {
+            return res.status(400).json({ error: "Invalid type. Must be 'bill' or 'expense'." });
+        }
+
+        // Create the bill/expense data object
+        let billOrExpenseData = {
             userId,
-            category, 
-            payDate: new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' }), 
+            category,
             amount: parseFloat(amount),
             vendor,
-            fileUrl: fileUrl || null,
+            type, // Distinguish between bills and expenses
             paid: false,
             saved: false,
             createdAt: new Date(),
+            fileUrl: fileUrl || null, // Optional file URL
+            reoccuring: reoccuring || false, // Default to false if not provided
+            payDate: null, // Default to null for expenses
         };
 
+        // Only add payDate for bills
+        if (type === "bill" && payDate) {
+            billOrExpenseData.payDate = new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' });
+        }
+
         // Add a new document to the "bills" collection
-        const docRef = await addDoc(billsCollection, billData);
+        const docRef = await addDoc(billsCollection, billOrExpenseData);
 
         // Return the document ID and data
-        res.status(201).json({ id: docRef.id, ...billData });
+        res.status(201).json({ id: docRef.id, ...billOrExpenseData });
     } catch (error) {
-        console.error("Upload Bill Error:", error.message);
-        res.status(500).json({ error: "Failed to upload bill: " + error.message });
+        console.error("Upload Bill/Expense Error:", error.message);
+        res.status(500).json({ error: "Failed to upload bill/expense: " + error.message });
     }
 };
 
