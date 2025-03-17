@@ -28,7 +28,8 @@ exports.createUser = async (req, res) => {
             email: user.email,
             name: name,
             phone: phone,
-            createdAt: new Date(),
+            createdAt: new Date(), 
+            budget: 250
         };
 
         await addDoc(usersCollection, userData);
@@ -95,5 +96,38 @@ exports.refreshToken = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: "Failed to refresh token" });
+    }
+}; 
+
+exports.updateBudget = async (req, res) => {
+    try {
+        const budget = parseFloat(req.body.budget); 
+        const uid = req.user.uid; 
+
+        // Validate the budget value
+        if (isNaN(budget) || budget < 0) {
+            return res.status(400).json({ error: "Budget must be a positive number." });
+        }
+
+        // Query Firestore to find the user document by UID
+        const userQuery = query(usersCollection, where("uid", "==", uid));
+        const userSnapshot = await getDocs(userQuery);
+
+        if (userSnapshot.empty) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        // Get the first matching document ID
+        const userDoc = userSnapshot.docs[0];
+        const userRef = doc(db, "users", userDoc.id);
+
+        // Update the budget field in the user document
+        await updateDoc(userRef, { budget: budget });
+
+        // Return success response
+        res.status(200).json({ message: "Budget updated successfully.", budget: budget });
+    } catch (error) {
+        console.error("Error updating budget:", error.message);
+        res.status(500).json({ error: "Failed to update budget. Please try again later." });
     }
 }; 

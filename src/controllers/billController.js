@@ -23,7 +23,7 @@ exports.uploadBill = async (req, res) => {
             return res.status(400).json({ error: "Invalid type. Must be 'bill' or 'expense'." }); 
         }
 
-        // Create the bill/expense data object
+        // Create the bill/ expense data object
         let billOrExpenseData = {
             userId,
             category,

@@ -10,7 +10,7 @@ router.get('/field/query', authenticateToken, getBillsByField)
 router.patch('/:billId/paid', authenticateToken, markBillAsPaid); 
 router.patch('/:billId/saved', authenticateToken, highlightBill)
 router.put('/:billId', authenticateToken, updateBill); 
-router.delete('/:billId', authenticateToken, deleteBill)
+router.delete('/:billId', authenticateToken, deleteBill) 
 router.get('/billName', authenticateToken, getBillsBySearch)
 
 module.exports = router; 
