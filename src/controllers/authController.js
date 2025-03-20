@@ -99,6 +99,33 @@ exports.refreshToken = async (req, res) => {
     }
 }; 
 
+exports.getUser = async (req, res) => {
+    try {
+        const userId = req.user.uid; // Get the authenticated user's UID
+        console.log("Authenticated User ID:", userId);
+
+        // Query the 'users' collection to find the document where the 'uid' field matches the authenticated user's UID
+        const usersCollection = collection(db, "users");
+        const q = query(usersCollection, where("uid", "==", userId));
+        const querySnapshot = await getDocs(q);
+
+        // Check if any documents match the query
+        if (querySnapshot.empty) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        // Get the first matching document (assuming UID is unique)
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+
+        // Return the user data
+        res.status(200).json(userData);
+    } catch (error) {
+        console.error("Error fetching user:", error.message, error.stack);
+        res.status(500).json({ error: "Failed to fetch user data." });
+    }
+};
+
 exports.updateBudget = async (req, res) => {
     try {
         const budget = parseFloat(req.body.budget); 

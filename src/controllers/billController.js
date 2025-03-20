@@ -11,7 +11,7 @@ exports.uploadBill = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized: Missing user ID" });
         }
 
-        const { category, payDate, amount, vendor, fileUrl, reoccuring, type } = req.body;
+        const { category, payDate, amount, vendor, fileUrl, reoccuring, type, color } = req.body;
 
         // Validate required fields
         if (!category || !amount || !vendor || !type) {
@@ -29,6 +29,7 @@ exports.uploadBill = async (req, res) => {
             category,
             amount: parseFloat(amount),
             vendor,
+            color: color || null, 
             type, // Distinguish between bills and expenses
             paid: false,
             saved: false,
