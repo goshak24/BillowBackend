@@ -30,7 +30,7 @@ exports.uploadBill = async (req, res) => {
             amount: parseFloat(amount),
             vendor,
             color: color || null, 
-            type, // Distinguish between bills and expenses
+            type, // Distinguish between bills and expenses 
             paid: false,
             saved: false,
             createdAt: new Date(),

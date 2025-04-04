@@ -79,11 +79,16 @@ exports.refreshToken = async (req, res) => {
             return res.status(400).json({ error: "Refresh token is required" });
         }
 
+        // Get Firebase API key from environment variables
+        const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY;
+
+        if (!FIREBASE_API_KEY) {
+            return res.status(500).json({ error: "Missing Firebase API Key" });
+        }
+
         const response = await axios.post(
-            `https://oauth2.googleapis.com/token`,
+            `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`,
             {
-                client_id: process.env.GOOGLE_CLIENT_ID,
-                client_secret: process.env.GOOGLE_CLIENT_SECRET, 
                 grant_type: "refresh_token",
                 refresh_token: refreshToken,
             }

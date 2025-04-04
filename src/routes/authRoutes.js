@@ -11,4 +11,4 @@ router.post("/refresh-token", refreshToken);
 router.put("/updatebudget", authenticateToken, updateBudget); 
 router.get("/user/:userId", authenticateToken, getUser);
 
-module.exports = router;
+module.exports = router; 
