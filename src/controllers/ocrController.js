@@ -109,6 +109,49 @@ const detectKeyInformation = async (text) => {
     }
 }
 
+//const openai = new OpenAIApi(new Configuration({
+//    apiKey: process.env.OPENAI_API_KEY
+//})); 
+
+const parseBillWithAI = async (rawText) => {
+    try {
+        const prompt = `
+You are an intelligent assistant. Extract the following fields from the given bill text:
+- Amount (currency and number)
+- Vendor
+- Category (Utilities, Subscriptions, Insurance, etc.)
+- Pay Date (in YYYY-MM-DD)
+
+Bill Text:
+"""
+${rawText}
+"""
+
+Return response as a JSON object with keys: amount, vendor, category, payDate.
+        `.trim();
+
+        const response = await openai.createChatCompletion({
+            model: "gpt-4",
+            messages: [
+                { role: "system", content: "You are a bill-parsing assistant." },
+                { role: "user", content: prompt }
+            ],
+            temperature: 0.3
+        });
+
+        const aiData = response.data.choices[0].message.content;
+        return JSON.parse(aiData);
+    } catch (error) {
+        console.error("AI parsing failed:", error.message);
+        return {
+            amount: null,
+            vendor: null,
+            category: null,
+            payDate: null
+        };
+    }
+};
+
 const extractAmount = (text) => {
     let amountConfidence = 100;
     let amountCount = 0;
