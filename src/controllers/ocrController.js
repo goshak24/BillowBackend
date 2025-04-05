@@ -3,6 +3,8 @@ const axios = require('axios');
 const { getStorage, ref, uploadBytes, getDownloadURL } = require("firebase/storage");
 const { doc } = require('firebase/firestore');
 const { db } = require('../config/firebase_config');
+const OpenAI = require("openai");
+const { setDoc } = require("firebase/firestore");
 
 // Heuristic approach cloud data 
 const heuristicRef = doc(db, "heuristic_data", "vendors_categories");
@@ -77,7 +79,9 @@ const preprocessText = (text) => {
 
 const detectKeyInformation = async (text) => {
     let amount, category, payDate, vendor;
+
     try {
+        // Heuristic extraction
         amount = extractAmount(text);
         vendor = extractVendor(text);
         category = categoriseBill(vendor.value);
@@ -86,34 +90,49 @@ const detectKeyInformation = async (text) => {
         let confidenceScores = [
             amount.confidence,
             vendor.confidence,
-            payDate.confidence
-        ]
+            payDate.confidence 
+        ];
 
-        const overallConfidence = ((confidenceScores[0] + confidenceScores[1] + confidenceScores[2]) / 3);
+        const overallConfidence = confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length;
 
         if (overallConfidence < 70) {
-            console.log("Confidence too low, using AI fallback...");
-            // const aiExtractedData = await parseBillWithAI(text);
-            // updateHeuristicRules(amount.value, vendor.value, category, payDate.value, aiExtractedData);
-            // return aiExtractedData;
+            console.log("Confidence too low (", overallConfidence, "%). Using AI fallback...");
+
+            const aiExtractedData = await parseBillWithAI(text);
+
+            await updateHeuristicRules(
+                amount.value,
+                vendor.value,
+                category,
+                payDate.value,
+                aiExtractedData
+            );
+
+            return aiExtractedData;
         }
 
+        // Return heuristically extracted data
         return {
             amount: amount.value,
             vendor: vendor.value,
             category,
             payDate: payDate.value
         };
+
     } catch (error) {
-        console.error('Failed to detect key information')
+        console.error('Failed to detect key information', error);
+        return {
+            amount: null,
+            vendor: null,
+            category: null,
+            payDate: null
+        };
     }
-}
+};
 
-//const openai = new OpenAIApi(new Configuration({
-//    apiKey: process.env.OPENAI_API_KEY
-//})); 
+const openai = new OpenAI(); 
 
-const parseBillWithAI = async (rawText) => {
+exports.parseBillWithAI = async (rawText) => {
     try {
         const prompt = `
 You are an intelligent assistant. Extract the following fields from the given bill text:
@@ -130,17 +149,19 @@ ${rawText}
 Return response as a JSON object with keys: amount, vendor, category, payDate.
         `.trim();
 
-        const response = await openai.createChatCompletion({
+        const response = await openai.responses.create({
             model: "gpt-4",
-            messages: [
+            input: [
                 { role: "system", content: "You are a bill-parsing assistant." },
                 { role: "user", content: prompt }
             ],
             temperature: 0.3
         });
 
-        const aiData = response.data.choices[0].message.content;
-        return JSON.parse(aiData);
+        const rawTextOutput = response?.data?.output_text || response?.output_text;
+
+        const aiData = JSON.parse(rawTextOutput);
+        return aiData; 
     } catch (error) {
         console.error("AI parsing failed:", error.message);
         return {
@@ -149,6 +170,37 @@ Return response as a JSON object with keys: amount, vendor, category, payDate.
             category: null,
             payDate: null
         };
+    }
+};
+
+const updateHeuristicRules = async (amount, vendor, category, payDate, aiData) => {
+    try {
+        const updates = {};
+
+        // Check if AI has more confident or corrected values
+        if (vendor !== aiData.vendor && aiData.vendor && aiData.category) {
+            console.log(`Vendor mismatch. Heuristic: "${vendor}", AI: "${aiData.vendor}"`); 
+            updates[aiData.vendor] = aiData.category;
+        }
+
+        // Log differences (could also compare amount/payDate if you want)
+        if (amount !== aiData.amount) {
+            console.log(`Amount mismatch. Heuristic: "${amount}", AI: "${aiData.amount}"`);
+        }
+
+        if (payDate !== aiData.payDate) {
+            console.log(`PayDate mismatch. Heuristic: "${payDate}", AI: "${aiData.payDate}"`);
+        }
+
+        // If we have vendor-category mappings to add, update Firestore
+        if (Object.keys(updates).length > 0) {
+            console.log("Updating vendor-category mappings in Firestore:", updates);
+
+            await setDoc(heuristicRef, updates, { merge: true }); 
+        }
+
+    } catch (error) {
+        console.error("Failed to update heuristic rules:", error.message);
     }
 };
 
