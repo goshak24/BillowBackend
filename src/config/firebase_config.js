@@ -1,7 +1,6 @@
 const { initializeApp } = require("firebase/app"); 
 const { getFirestore } = require("firebase/firestore");
 const { getAuth } = require("firebase/auth");
-// const { getMessaging } = require('firebase/messaging'); 
 require('dotenv').config();
 
 const firebaseConfig = {
@@ -17,6 +16,5 @@ const app = initializeApp(firebaseConfig);
 
 const db = getFirestore(app); 
 const auth = getAuth(app); 
-// const messaging = getMessaging(app); 
 
 module.exports = { db, auth } 

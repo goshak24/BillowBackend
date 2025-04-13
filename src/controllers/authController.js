@@ -1,10 +1,10 @@
 const { auth } = require("../config/firebase_config");
-const { axios } = require('axios')
+const axios = require('axios')
 const admin = require("../fb-admin/firebase-admin");
 const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require("firebase/auth"); 
 
 const { db } = require("../config/firebase_config");
-const { collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, query, where } = require("firebase/firestore");
+const { collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, query, where, setDoc } = require("firebase/firestore");
 const usersCollection = collection(db, "users");
 
 exports.createUser = async (req, res) => {
@@ -100,9 +100,10 @@ exports.refreshToken = async (req, res) => {
             expiresIn: response.data.expires_in,
         });
     } catch (error) {
+        console.error("Token refresh failed:", error.response?.data || error.message);
         res.status(500).json({ error: "Failed to refresh token" });
     }
-}; 
+}
 
 exports.getUser = async (req, res) => {
     try {
@@ -163,3 +164,22 @@ exports.updateBudget = async (req, res) => {
         res.status(500).json({ error: "Failed to update budget. Please try again later." });
     }
 }; 
+
+exports.updateFcmToken = async (req, res) => {
+    const userId = req.user.uid;
+    const { fcmToken } = req.body;
+  
+    if (!fcmToken) {
+      return res.status(400).json({ error: 'No FCM token provided' });
+    }
+  
+    try {
+      const userRef = doc(db, 'users', userId);
+      await setDoc(userRef, { fcmToken }, { merge: true });
+  
+      res.status(200).json({ message: 'Token updated' });
+    } catch (error) {
+      console.error('Error updating FCM token:', error.message);
+      res.status(500).json({ error: 'Failed to update FCM token' });
+    }
+  }; 

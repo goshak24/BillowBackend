@@ -21,7 +21,7 @@ const workerGen = async () => {
 const workerCount = 3;
 (async () => {
     await Promise.all(Array(workerCount).fill(0).map(() => workerGen()));
-})(); 
+})();
 
 exports.processMultipleOCR = async (req, res) => {
     try {
@@ -90,7 +90,7 @@ const detectKeyInformation = async (text) => {
         let confidenceScores = [
             amount.confidence,
             vendor.confidence,
-            payDate.confidence 
+            payDate.confidence
         ];
 
         const overallConfidence = confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length;
@@ -130,7 +130,7 @@ const detectKeyInformation = async (text) => {
     }
 };
 
-const openai = new OpenAI(); 
+const openai = new OpenAI();
 
 exports.parseBillWithAI = async (rawText) => {
     try {
@@ -161,7 +161,7 @@ Return response as a JSON object with keys: amount, vendor, category, payDate.
         const rawTextOutput = response?.data?.output_text || response?.output_text;
 
         const aiData = JSON.parse(rawTextOutput);
-        return aiData; 
+        return aiData;
     } catch (error) {
         console.error("AI parsing failed:", error.message);
         return {
@@ -179,7 +179,7 @@ const updateHeuristicRules = async (amount, vendor, category, payDate, aiData) =
 
         // Check if AI has more confident or corrected values
         if (vendor !== aiData.vendor && aiData.vendor && aiData.category) {
-            console.log(`Vendor mismatch. Heuristic: "${vendor}", AI: "${aiData.vendor}"`); 
+            console.log(`Vendor mismatch. Heuristic: "${vendor}", AI: "${aiData.vendor}"`);
             updates[aiData.vendor] = aiData.category;
         }
 
@@ -196,7 +196,7 @@ const updateHeuristicRules = async (amount, vendor, category, payDate, aiData) =
         if (Object.keys(updates).length > 0) {
             console.log("Updating vendor-category mappings in Firestore:", updates);
 
-            await setDoc(heuristicRef, updates, { merge: true }); 
+            await setDoc(heuristicRef, updates, { merge: true });
         }
 
     } catch (error) {

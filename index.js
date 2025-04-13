@@ -16,6 +16,6 @@ const emailRoutes = require('./src/routes/emailRoutes');
 app.use('/api/auth', authRoutes);
 app.use('/api/bill', billRoutes); 
 app.use('/api/ocr', ocrRoutes); 
-app.use('/api/email', emailRoutes);  
+app.use('/api/email', emailRoutes); 
 
 module.exports = app; 

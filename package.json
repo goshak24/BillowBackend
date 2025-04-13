@@ -9,7 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@firebase/messaging": "^0.12.16",
     "@google-cloud/local-auth": "^2.1.0",
     "axios": "^1.7.9",
     "chrono-node": "^2.7.8",
