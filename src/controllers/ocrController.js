@@ -70,7 +70,6 @@ exports.processMultipleOCR = async (req, res) => {
             // Run OCR to extract text
             const { data: { text } } = await scheduler.addJob("recognize", file.buffer);
 
-            console.log("Attempting extraction");
             // Extract details from text
             let billData = await extractBillDetails(text);
 
@@ -91,7 +90,6 @@ const extractBillDetails = async (input) => {
         const preprocessed = preprocessText(input);
         
         const keyInfo = await detectKeyInformation(preprocessed);
-        console.log(keyInfo);
         return keyInfo;
     } catch (error) {
         console.error('Failed at extracting bill details:', error);
@@ -388,8 +386,7 @@ const categoriseBill = (vendor, vendorCategoryMap = null) => {
 
 const extractPayDate = (text) => {
     try {
-        const parsedDate = chrono.parse(text);
-        console.log(parsedDate);
+        const parsedDate = chrono.parse(text); 
         
         if (!parsedDate || parsedDate.length === 0) {
             return { confidence: 0, value: null };
