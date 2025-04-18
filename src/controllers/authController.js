@@ -1,7 +1,7 @@
 const { auth } = require("../config/firebase_config");
 const axios = require('axios')
 const admin = require("../fb-admin/firebase-admin");
-const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require("firebase/auth"); 
+const { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } = require("firebase/auth"); 
 
 const { db } = require("../config/firebase_config");
 const { collection, addDoc, getDocs, doc, getDoc, deleteDoc, updateDoc, query, where, setDoc } = require("firebase/firestore");
@@ -129,6 +129,21 @@ exports.getUser = async (req, res) => {
     } catch (error) {
         console.error("Error fetching user:", error.message, error.stack);
         res.status(500).json({ error: "Failed to fetch user data." });
+    }
+};
+
+exports.sendPasswordReset = async (req, res) => {
+    try {
+        const email = req.body.email;
+        if (!email) {
+            return res.status(400).json({ error: "Email is required." });
+        }
+
+        const sendEmail = await sendPasswordResetEmail(auth, email);
+        res.status(200).json({ message: "Reset Password Email Sent.", sendEmail });
+    } catch (error) {
+        console.error("Backend Reset Error:", error);
+        res.status(400).json({ error: error.message });
     }
 };
 
