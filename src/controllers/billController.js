@@ -23,20 +23,29 @@ exports.uploadBill = async (req, res) => {
             return res.status(400).json({ error: "Invalid type. Must be 'bill' or 'expense'." }); 
         }
 
-        // Create the bill/ expense data object
+        // Handle date properly regardless of input format
+        let formattedPayDate = null;
+        if (payDate) {
+            const dateObj = new Date(payDate);
+            if (!isNaN(dateObj)) {
+                formattedPayDate = dateObj.toLocaleString('default', { month: 'short', day: 'numeric' });
+            }
+        }
+
+        // Create the bill/expense data object
         let billOrExpenseData = {
             userId,
             category,
             amount: parseFloat(amount),
             vendor,
             color: color || null, 
-            type, // Distinguish between bills and expenses 
+            type, 
             paid: false,
             saved: false,
             createdAt: new Date(),
-            fileUrl: fileUrl || null, // Optional file URL 
-            reoccuring: reoccuring || false, // Default to false if not provided
-            payDate: new Date(payDate).toLocaleString('default', { month: 'short', day: 'numeric' }) || null, // Default to null for expenses
+            fileUrl: fileUrl || null,
+            reoccuring: reoccuring || false,
+            payDate: formattedPayDate, // Use our properly formatted date
         }; 
 
         // Add a new document to the "bills" collection
