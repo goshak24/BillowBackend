@@ -1,15 +1,13 @@
 const express = require('express');
-const { listLabels, getLabelledEmails, createLabel, deleteLabel, disconnectGmail, getAuthUrl, handleOAuthCallback } = require('../controllers/emailController');
-
 const router = express.Router();
+const emailController = require('../controllers/emailController');
 
-// Route to fetch Gmail labels
-router.get('/labels', listLabels);
-router.get("/labels/:id", getLabelledEmails);
-router.post("/labels", createLabel);
-router.delete("/labels/:id", deleteLabel);
-router.delete("/disconnect", disconnectGmail); 
-router.get("/url", getAuthUrl);
-router.get("/url/callback", handleOAuthCallback);
+// OAuth routes
+router.get('/auth/url', emailController.getAuthUrl);
+router.post('/auth/token', emailController.exchangeCode);
 
-module.exports = router; 
+// Gmail API routes
+router.get('/labels', emailController.listLabels);
+router.delete('/disconnect', emailController.disconnectGmail);
+
+module.exports = router;

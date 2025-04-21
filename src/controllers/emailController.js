@@ -12,6 +12,10 @@ const SCOPES = [
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 
+// Configuration - Set your primary redirect URI here
+const PRIMARY_REDIRECT_URI = "https://f64b-86-30-169-92.ngrok-free.app/api/email/url/callback";
+const LOCAL_REDIRECT_URI = "http://localhost:5000/api/email/url/callback";
+
 async function loadSavedCredentialsIfExists() {
   try {
     const content = await fs.readFile(TOKEN_PATH);
@@ -36,7 +40,7 @@ async function saveCredentials(client) {
   await fs.writeFile(TOKEN_PATH, payload);
 }
 
-async function authorize() {
+async function authorize(redirectUri = PRIMARY_REDIRECT_URI) {
   let client = await loadSavedCredentialsIfExists();
   if (client) {
     return client;
@@ -44,31 +48,36 @@ async function authorize() {
 
   const content = await fs.readFile(CREDENTIALS_PATH);
   const keys = JSON.parse(content);
-  const { client_id, client_secret, redirect_uris } = keys.web || keys.installed;
+  const { client_id, client_secret } = keys.web || keys.installed;
 
-  return new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  return new google.auth.OAuth2(
+    client_id,
+    client_secret,
+    redirectUri
+  );
 }
 
 // Generate OAuth URL
 const getAuthUrl = async (req, res) => {
   try {
-    const oauth2Client = await authorize();
-    const REDIRECT_URI = "http://localhost:5000/api/email/url/callback"; 
+    // Use the same redirect URI that will be used in the callback
+    const redirectUri = req.query.local ? LOCAL_REDIRECT_URI : PRIMARY_REDIRECT_URI;
+    const oauth2Client = await authorize(redirectUri);
 
-    console.log("Using Redirect URI:", REDIRECT_URI); // Debugging log
+    console.log("Using Redirect URI:", redirectUri);
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
       prompt: "consent",
       scope: SCOPES,
-      redirect_uri: REDIRECT_URI, 
+      redirect_uri: redirectUri,
     });
 
     console.log("Generated Auth URL:", authUrl);
     res.json({ authUrl });
   } catch (error) {
     console.error("Error generating auth URL:", error);
-    res.status(500).json({ error: "Failed to generate auth URL" });
+    res.status(500).json({ error: "Failed to generate auth URL", details: error.message });
   }
 };
 
@@ -85,13 +94,16 @@ const handleOAuthCallback = async (req, res) => {
 
     console.log(`✅ Received OAuth code: ${code}`);
 
-    const oauth2Client = await authorize();
-    const REDIRECT_URI = "http://localhost:5000/api/email/url/callback"; 
+    // Determine if this is a local callback
+    const isLocal = req.headers.host.includes('localhost');
+    const redirectUri = isLocal ? LOCAL_REDIRECT_URI : PRIMARY_REDIRECT_URI;
+    
+    const oauth2Client = await authorize(redirectUri);
 
-    console.log("🔄 Exchanging code for tokens...");
+    console.log("🔄 Exchanging code for tokens with redirect:", redirectUri);
     const { tokens } = await oauth2Client.getToken({
       code,
-      redirect_uri: REDIRECT_URI, 
+      redirect_uri: redirectUri,
     });
 
     console.log("✅ Tokens received:", tokens);
@@ -104,7 +116,11 @@ const handleOAuthCallback = async (req, res) => {
     return res.json({ message: "Authentication successful!", tokens });
   } catch (error) {
     console.error("OAuth Callback Error:", error);
-    return res.status(500).json({ error: "OAuth callback failed", details: error.message });
+    return res.status(500).json({ 
+      error: "OAuth callback failed", 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -118,7 +134,7 @@ const listLabels = async (req, res) => {
     res.json({ labels: response.data.labels || [] });
   } catch (error) {
     console.error("Error listing labels:", error);
-    res.status(500).json({ error: "Error fetching labels" });
+    res.status(500).json({ error: "Error fetching labels", details: error.message });
   }
 };
 
@@ -150,9 +166,15 @@ const createLabel = async (req, res) => {
       messageListVisibility: "show",
     };
 
-    const response = await gmail.users.labels.create({ userId: "me", requestBody: label });
+    const response = await gmail.users.labels.create({ 
+      userId: "me", 
+      requestBody: label 
+    });
 
-    res.status(201).json({ message: "Label created successfully", label: response.data });
+    res.status(201).json({ 
+      message: "Label created successfully", 
+      label: response.data 
+    });
   } catch (error) {
     console.error("Error creating label:", error);
     res.status(500).json({ error: error.message });
@@ -175,6 +197,43 @@ const deleteLabel = async (req, res) => {
   }
 };
 
+const exchangeCode = async (req, res) => {
+  console.log("🔄 Direct Code Exchange triggered...");
+
+  try {
+    const { code } = req.body;
+    if (!code) {
+      console.error("❌ No authorization code received in request!");
+      return res.status(400).json({ error: "Authorization code is missing" });
+    }
+
+    console.log(`✅ Received OAuth code: ${code}`);
+
+    const oauth2Client = await authorize(PRIMARY_REDIRECT_URI);
+    
+    console.log("🔄 Exchanging code for tokens with redirect:", PRIMARY_REDIRECT_URI);
+    const { tokens } = await oauth2Client.getToken({
+      code,
+      redirect_uri: PRIMARY_REDIRECT_URI,
+    });
+
+    console.log("✅ Tokens received:", tokens);
+
+    oauth2Client.setCredentials(tokens);
+    await saveCredentials(oauth2Client);
+
+    console.log("💾 Tokens saved successfully!");
+
+    return res.json({ message: "Authentication successful!", tokens });
+  } catch (error) {
+    console.error("Code Exchange Error:", error);
+    return res.status(500).json({ 
+      error: "Code exchange failed", 
+      details: error.message 
+    });
+  }
+};
+
 // Disconnect Gmail (Delete Token)
 const disconnectGmail = async (req, res) => {
   try {
@@ -194,4 +253,5 @@ module.exports = {
   disconnectGmail,
   getAuthUrl,
   handleOAuthCallback,
-}; 
+  exchangeCode
+};

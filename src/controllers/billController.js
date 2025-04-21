@@ -46,6 +46,7 @@ exports.uploadBill = async (req, res) => {
             fileUrl: fileUrl || null,
             reoccuring: reoccuring || false,
             payDate: formattedPayDate, // Use our properly formatted date
+            paidDate: null // Initialize paidDate as null
         }; 
 
         // Add a new document to the "bills" collection
@@ -79,8 +80,7 @@ exports.getBillById = async (req, res) => {
 exports.getBillsByField = async (req, res) => {
     try {
         const userId = req.user.uid;
-        const { category, vendor, payDate, createdAt, amount, paid } = req.query;
-
+        const { category, vendor, payDate, createdAt, amount, paid, paidDate, paidDateFrom, paidDateTo } = req.query;
 
         let q = query(billsCollection, where("userId", "==", userId));
 
@@ -89,13 +89,44 @@ exports.getBillsByField = async (req, res) => {
         if (payDate) q = query(q, where("payDate", "==", payDate));
         if (createdAt) q = query(q, where("createdAt", "==", new Date(createdAt)));
         if (amount) q = query(q, where("amount", "==", parseFloat(amount)));
-        if (paid) q = query(q, where("paid", "==", true));
-
+        if (paid !== undefined) q = query(q, where("paid", "==", paid === 'true'));
+        
+        // Get bills - we'll filter by date range in JavaScript since Firestore
+        // doesn't easily support range queries on multiple fields
         const querySnapshot = await getDocs(q);
-        const bills = [];
+        let bills = [];
+        
         querySnapshot.forEach((doc) => {
             bills.push({ id: doc.id, ...doc.data() });
         });
+        
+        // If paidDate filters are provided, apply them in JavaScript
+        if (paidDateFrom || paidDateTo) {
+            const fromDate = paidDateFrom ? new Date(paidDateFrom) : new Date(0); // 0 timestamp for earliest date
+            const toDate = paidDateTo ? new Date(paidDateTo) : new Date(); // Current date if not specified
+            
+            bills = bills.filter(bill => {
+                if (!bill.paidDate) return false;
+                
+                const billPaidDate = bill.paidDate instanceof Date ? 
+                    bill.paidDate : 
+                    new Date(bill.paidDate);
+                    
+                return billPaidDate >= fromDate && billPaidDate <= toDate;
+            });
+        } else if (paidDate) {
+            // Exact paidDate match
+            const exactDate = new Date(paidDate);
+            bills = bills.filter(bill => {
+                if (!bill.paidDate) return false;
+                
+                const billPaidDate = bill.paidDate instanceof Date ? 
+                    bill.paidDate : 
+                    new Date(bill.paidDate);
+                
+                return billPaidDate.toDateString() === exactDate.toDateString();
+            });
+        }
 
         if (bills.length === 0) {
             console.log("No bills found matching the query.");
@@ -153,10 +184,27 @@ exports.markBillAsPaid = async (req, res) => {
 
         const currentPaid = billSnap.data().paid;
         const newPaid = !currentPaid;
+        
+        // If marking as paid, add a paidDate
+        // If marking as unpaid, remove the paidDate
+        const updateData = { 
+            paid: newPaid
+        };
+        
+        if (newPaid) {
+            // Add paidDate when marking as paid
+            updateData.paidDate = new Date();
+        } else {
+            // Remove paidDate when marking as unpaid
+            updateData.paidDate = null;
+        }
 
-        await updateDoc(doc(billsCollection, billId), { paid: newPaid }); 
+        await updateDoc(doc(billsCollection, billId), updateData); 
 
-        res.status(200).json({ message: `Bill has been ${newPaid ? "paid" : "unpaid"}` });
+        res.status(200).json({ 
+            message: `Bill has been ${newPaid ? "paid" : "unpaid"}`,
+            paidDate: newPaid ? updateData.paidDate : null
+        });
     } catch (error) {
         res.status(500).json({ error: error.message }); 
     }
